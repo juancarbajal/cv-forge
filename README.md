@@ -19,10 +19,11 @@ Landing interviews starts with speaking the exact language of the job descriptio
 - **Markdown CV & Version Management:** Create, import, edit, duplicate, search, favorite, and version CVs stored locally as Markdown files.
 - **Job Application Tracking:** Store job offers and track applications alongside their extracted requirements.
 - **Explainable ATS Scoring:** Compare a CV against a job offer's requirements to identify matches, partial matches, and gaps with a transparent ATS score.
-- **AI-Powered CV Optimization:** Run an optimization pipeline to generate tailored CV versions with anti-invention validation and traceability to source CV evidence.
+- **AI-Powered Agentic CV Optimization:** Run a Go-native agentic optimization loop (`ReflectionOptimizerAgent` + `CriticAgent`, up to 2 reflection iterations) with deterministic anti-invention validation, semantic fact-checking, and traceability to source CV evidence.
+- **Gap Interviewer Agent:** Automatically detect missing or partial requirements and answer targeted clarifying questions (`GapInterviewerAgent`) to incorporate verified, unrecorded experience before tailoring.
 - **Git-Style Diffs:** Inspect line-level differences between original and optimized CVs, as well as prompt revisions.
 - **Multi-Provider AI Support:** Switch at runtime between **Gemini**, **OpenAI**, **Groq**, **Ollama** (local LLMs), or a built-in **Mock** provider for offline testing.
-- **Prompt Versioning:** Manage, edit, and roll back system prompts used across the optimization pipeline.
+- **Prompt Versioning:** Manage, edit, and roll back system prompts used across the pipeline and agents (`JOB_ANALYSIS`, `CV_MATCHING`, `ATS_SCORING`, `CV_OPTIMIZATION`, `TRANSLATION`, `CRITIC_AUDIT`, and `GAP_INTERVIEW`).
 - **Local Security & Audit Trail:** Encrypt stored AI provider API keys with AES-256-GCM and review a local audit log of actions.
 
 ## Architecture
@@ -34,9 +35,9 @@ cv-checker/
 ├── cmd/cvchecker/          # Application entrypoint and dependency wiring
 ├── internal/
 │   ├── domain/             # Core entities, ATS scoring, anti-invention validator, ports
-│   ├── app/                # Application services and optimization pipeline
+│   ├── app/                # Application services, pipeline, and native AI agents (agents/)
 │   ├── infrastructure/     # SQLite persistence, Markdown store, AI providers, AES-GCM, Git diff
-│   └── ui/                 # Fyne v2 desktop GUI and views
+│   └── ui/                 # Fyne v2 desktop GUI, custom AppTheme, and views
 └── docs/                   # Architecture, requirements, and test case documentation (Spanish)
 ```
 
