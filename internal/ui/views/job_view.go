@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/jcarbajal/cv-checker/internal/app"
@@ -83,9 +84,10 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 		}
 	}
 
-	btnNewJob := widget.NewButton("Nueva Postulación", func() {
+	btnNewJob := widget.NewButtonWithIcon("Nueva Postulación", theme.ContentAddIcon(), func() {
 		v.showCreateJobDialog()
 	})
+	btnNewJob.Importance = widget.HighImportance
 
 	leftPanel := container.NewBorder(
 		widget.NewLabelWithStyle("Postulaciones Laborales", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
@@ -112,7 +114,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 	v.postingEntry = widget.NewMultiLineEntry()
 	v.postingEntry.SetPlaceHolder("Pegue aquí el texto completo del anuncio o descripción de la vacante laboral...")
 
-	btnSaveJob := widget.NewButton("Actualizar Datos de Postulación", func() {
+	btnSaveJob := widget.NewButtonWithIcon("Actualizar Datos de Postulación", theme.DocumentSaveIcon(), func() {
 		if v.selectedJob == nil {
 			return
 		}
@@ -134,6 +136,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 		v.reloadJobs()
 		dialog.ShowInformation("Éxito", "Postulación actualizada correctamente", v.win)
 	})
+	btnSaveJob.Importance = widget.HighImportance
 
 	formOferta := widget.NewForm(
 		widget.NewFormItem("Empresa:", v.companyEntry),
@@ -166,7 +169,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 	v.matchesContainer = container.NewVBox()
 	v.recsContainer = container.NewVBox()
 
-	btnAnalyze := widget.NewButton("1. Analizar Oferta (Extraer Requisitos)", func() {
+	btnAnalyze := widget.NewButtonWithIcon("1. Analizar Oferta (Extraer Requisitos)", theme.SearchIcon(), func() {
 		if v.selectedJob == nil {
 			return
 		}
@@ -183,7 +186,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 		})
 	})
 
-	btnMatchScore := widget.NewButton("2. Evaluar Matching & Calcular ATS", func() {
+	btnMatchScore := widget.NewButtonWithIcon("2. Evaluar Matching & Calcular ATS", theme.ConfirmIcon(), func() {
 		if v.selectedJob == nil {
 			return
 		}
@@ -199,6 +202,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 			dialog.ShowInformation("Completado", "Matching y Score ATS calculados", v.win)
 		})
 	})
+	btnMatchScore.Importance = widget.HighImportance
 
 	analysisActionButtons := container.NewHBox(btnAnalyze, btnMatchScore)
 	atsCard := widget.NewCard("Resultado ATS Explicable", "", container.NewVBox(
@@ -226,7 +230,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 	v.agentTraceLabel = widget.NewLabel("Estado Agentes: Sin ejecutar")
 	v.agentTraceLabel.Wrapping = fyne.TextWrapWord
 
-	btnGapInterview := widget.NewButton("2b. Responder Preguntas de Gaps (Opcional)", func() {
+	btnGapInterview := widget.NewButtonWithIcon("2b. Responder Preguntas de Gaps (Opcional)", theme.QuestionIcon(), func() {
 		if v.selectedJob == nil {
 			return
 		}
@@ -275,7 +279,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 		})
 	})
 
-	btnOptimize := widget.NewButton("3. Generar CV Optimizado con IA (Agentes + Anti-Invención)", func() {
+	btnOptimize := widget.NewButtonWithIcon("3. Generar CV Optimizado con IA (Agentes + Anti-Invención)", theme.MediaPlayIcon(), func() {
 		if v.selectedJob == nil {
 			return
 		}
@@ -299,8 +303,10 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 			dialog.ShowInformation("Éxito", "Nueva versión del CV generada, auditada y guardada en el historial", v.win)
 		})
 	})
+	btnOptimize.Importance = widget.HighImportance
 
 	v.diffViewer = widget.NewMultiLineEntry()
+	v.diffViewer.TextStyle = fyne.TextStyle{Monospace: true}
 	v.diffViewer.SetPlaceHolder("El diff estilo Git aparecerá aquí tras ejecutar la optimización...")
 	v.changesContainer = container.NewVBox()
 

@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/jcarbajal/cv-checker/internal/app"
@@ -71,7 +72,7 @@ func (v *SettingsView) buildUI() fyne.CanvasObject {
 
 	v.statusLabel = widget.NewLabelWithStyle("Proveedor Activo Actual: Verificando...", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
-	btnSave := widget.NewButton("Guardar Configuración Cifrada", func() {
+	btnSave := widget.NewButtonWithIcon("Guardar Configuración Cifrada", theme.DocumentSaveIcon(), func() {
 		if v.providerSelect.Selected == "" {
 			dialog.ShowInformation("Atención", "Seleccione un proveedor de IA", v.win)
 			return
@@ -92,6 +93,7 @@ func (v *SettingsView) buildUI() fyne.CanvasObject {
 		v.apiKeyEntry.SetText("")
 		dialog.ShowInformation("Éxito", "Configuración guardada y cifrada correctamente con AES-256 GCM", v.win)
 	})
+	btnSave.Importance = widget.HighImportance
 
 	settingsForm := widget.NewForm(
 		widget.NewFormItem("Proveedor de IA:", v.providerSelect),

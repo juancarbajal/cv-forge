@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/jcarbajal/cv-checker/internal/app"
@@ -70,13 +71,14 @@ func (v *CVView) buildUI() fyne.CanvasObject {
 		}
 	}
 
-	btnNew := widget.NewButton("Crear Nuevo CV", func() {
+	btnNew := widget.NewButtonWithIcon("Crear Nuevo CV", theme.ContentAddIcon(), func() {
 		v.showCreateDialog(false)
 	})
-	btnImport := widget.NewButton("Importar Markdown", func() {
+	btnNew.Importance = widget.HighImportance
+	btnImport := widget.NewButtonWithIcon("Importar Markdown", theme.FolderOpenIcon(), func() {
 		v.showCreateDialog(true)
 	})
-	btnDuplicate := widget.NewButton("Duplicar", func() {
+	btnDuplicate := widget.NewButtonWithIcon("Duplicar", theme.ContentCopyIcon(), func() {
 		if v.selectedCV == nil {
 			dialog.ShowInformation("Atención", "Seleccione un CV para duplicar", v.win)
 			return
@@ -89,7 +91,7 @@ func (v *CVView) buildUI() fyne.CanvasObject {
 		}
 		v.reloadCVs("")
 	})
-	btnDelete := widget.NewButton("Eliminar", func() {
+	btnDelete := widget.NewButtonWithIcon("Eliminar", theme.DeleteIcon(), func() {
 		if v.selectedCV == nil {
 			return
 		}
@@ -102,6 +104,7 @@ func (v *CVView) buildUI() fyne.CanvasObject {
 			}
 		}, v.win)
 	})
+	btnDelete.Importance = widget.DangerImportance
 
 	leftButtons := container.NewGridWithColumns(2, btnNew, btnImport, btnDuplicate, btnDelete)
 	leftPanel := container.NewBorder(
@@ -182,7 +185,7 @@ func (v *CVView) buildUI() fyne.CanvasObject {
 	v.reasonEntry = widget.NewEntry()
 	v.reasonEntry.SetPlaceHolder("Ej: Se incorporaron certificaciones en AWS y proyectos recientes con Go...")
 
-	btnSaveVersion := widget.NewButton("Guardar como Nueva Versión", func() {
+	btnSaveVersion := widget.NewButtonWithIcon("Guardar como Nueva Versión", theme.DocumentSaveIcon(), func() {
 		if v.selectedCV == nil {
 			return
 		}
@@ -203,6 +206,7 @@ func (v *CVView) buildUI() fyne.CanvasObject {
 		v.selectCV(v.selectedCV.ID)
 		dialog.ShowInformation("Éxito", "Nueva versión guardada correctamente", v.win)
 	})
+	btnSaveVersion.Importance = widget.HighImportance
 
 	reasonForm := widget.NewForm(
 		widget.NewFormItem("Motivo de esta Versión:", v.reasonEntry),

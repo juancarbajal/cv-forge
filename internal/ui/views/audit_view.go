@@ -6,6 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/jcarbajal/cv-checker/internal/app"
@@ -39,7 +40,7 @@ func (v *AuditView) buildUI() fyne.CanvasObject {
 					widget.NewLabel("Proveedor (Modelo)"),
 					widget.NewLabel("Resultado"),
 				),
-				widget.NewLabel("Detalles"),
+				widget.NewLabelWithStyle("Detalles", fyne.TextAlignLeading, fyne.TextStyle{Monospace: true}),
 			)
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
@@ -62,9 +63,10 @@ func (v *AuditView) buildUI() fyne.CanvasObject {
 		},
 	)
 
-	btnRefresh := widget.NewButton("Actualizar Registro de Auditoría", func() {
+	btnRefresh := widget.NewButtonWithIcon("Actualizar Registro de Auditoría", theme.ViewRefreshIcon(), func() {
 		v.reloadLogs()
 	})
+	btnRefresh.Importance = widget.MediumImportance
 
 	card := widget.NewCard("Historial de Auditoría Inmutable", "Registro de todas las operaciones críticas, llamadas a IA y optimizaciones.", container.NewBorder(
 		nil,

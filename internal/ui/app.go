@@ -30,6 +30,7 @@ func NewApp(
 	auditSvc *appservice.AuditService,
 ) *App {
 	a := app.NewWithID("com.cvchecker.app")
+	a.Settings().SetTheme(NewAppTheme())
 	win := a.NewWindow("CV Checker - Optimizador Inteligente de CVs ATS")
 	win.Resize(fyne.NewSize(1200, 780))
 

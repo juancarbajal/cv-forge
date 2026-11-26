@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/jcarbajal/cv-checker/internal/app"
@@ -43,6 +44,8 @@ func (v *PromptView) buildUI() fyne.CanvasObject {
 		string(domain.PromptTypeATSScoring),
 		string(domain.PromptTypeCVOptimization),
 		string(domain.PromptTypeTranslation),
+		string(domain.PromptTypeCriticAudit),
+		string(domain.PromptTypeGapInterview),
 	}
 
 	v.typeSelect = widget.NewSelect(promptTypes, func(selected string) {
@@ -71,7 +74,7 @@ func (v *PromptView) buildUI() fyne.CanvasObject {
 		}
 	}
 
-	btnRollback := widget.NewButton("Restaurar Versión Seleccionada (Rollback)", func() {
+	btnRollback := widget.NewButtonWithIcon("Restaurar Versión Seleccionada (Rollback)", theme.HistoryIcon(), func() {
 		if v.selectedPrompt == nil {
 			dialog.ShowInformation("Atención", "Seleccione una versión para restaurar", v.win)
 			return
@@ -84,8 +87,9 @@ func (v *PromptView) buildUI() fyne.CanvasObject {
 		v.reloadVersions(v.selectedPrompt.Type)
 		dialog.ShowInformation("Éxito", fmt.Sprintf("Versión %d activada correctamente", v.selectedPrompt.Version), v.win)
 	})
+	btnRollback.Importance = widget.WarningImportance
 
-	btnCompare := widget.NewButton("Comparar con Versión Activa (Diff)", func() {
+	btnCompare := widget.NewButtonWithIcon("Comparar con Versión Activa (Diff)", theme.VisibilityIcon(), func() {
 		if v.selectedPrompt == nil {
 			return
 		}
@@ -124,7 +128,7 @@ func (v *PromptView) buildUI() fyne.CanvasObject {
 	v.makeActive = widget.NewCheck("Establecer inmediatamente como versión activa", nil)
 	v.makeActive.SetChecked(true)
 
-	btnSave := widget.NewButton("Guardar como Nueva Versión (v+1)", func() {
+	btnSave := widget.NewButtonWithIcon("Guardar como Nueva Versión (v+1)", theme.DocumentSaveIcon(), func() {
 		if v.typeSelect.Selected == "" {
 			return
 		}
@@ -142,8 +146,10 @@ func (v *PromptView) buildUI() fyne.CanvasObject {
 		v.selectPrompt(newP)
 		dialog.ShowInformation("Éxito", fmt.Sprintf("Nueva versión v%d creada", newP.Version), v.win)
 	})
+	btnSave.Importance = widget.HighImportance
 
 	v.diffEntry = widget.NewMultiLineEntry()
+	v.diffEntry.TextStyle = fyne.TextStyle{Monospace: true}
 	v.diffEntry.SetPlaceHolder("El diff de cambios entre versiones se mostrará aquí...")
 
 	promptForm := widget.NewForm(
