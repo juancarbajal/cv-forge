@@ -84,5 +84,6 @@ type AIProvider interface {
 	MatchCV(ctx context.Context, cvContent string, requirements []Requirement, prompt string) ([]MatchResult, error)
 	GenerateRecommendations(ctx context.Context, cvContent string, matches []MatchResult, prompt string) (Recommendations, error)
 	GenerateOptimizedCV(ctx context.Context, cvContent string, jobPosting string, matches []MatchResult, targetLang Language, prompt string) (OptimizedCVResult, error)
+	CompleteJSON(ctx context.Context, systemPrompt, userMessage string) (string, error)
 	ProviderName() string
 }

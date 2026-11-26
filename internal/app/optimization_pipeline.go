@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jcarbajal/cv-checker/internal/app/agents"
 	"github.com/jcarbajal/cv-checker/internal/domain"
 	"github.com/jcarbajal/cv-checker/internal/infrastructure/ai"
 )
@@ -190,10 +191,61 @@ type OptimizationExecutionResult struct {
 	DiffUnified    string                      `json:"diff_unified"`
 	Changes        []domain.OptimizationChange `json:"changes"`
 	ValidationWarn []domain.ValidationAlert    `json:"validation_warnings"`
+	AgentTrace     []domain.AgentStepTrace     `json:"agent_trace"`
+	CriticSummary  string                      `json:"critic_summary"`
 }
 
-// OptimizeAndGenerateCV ejecuta la Fase 4 y 5: Optimización con regla Anti-Invención, Diff y versionado
+// GenerateGapQuestions ejecuta el GapInterviewerAgent sobre los requisitos faltantes o parciales.
+func (p *OptimizationPipelineService) GenerateGapQuestions(ctx context.Context, jobID, versionID string) ([]domain.GapQuestion, error) {
+	cvContent, _, err := p.cvService.GetVersionContent(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo contenido del CV origen: %w", err)
+	}
+
+	matches, err := p.jobRepo.GetMatchResults(ctx, jobID)
+	if err != nil || len(matches) == 0 {
+		return nil, fmt.Errorf("debe ejecutar el matching previo antes de analizar gaps")
+	}
+
+	provider, err := p.aiFactory.GetActiveProvider(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	gapPromptObj, _ := p.promptRepo.GetActive(ctx, domain.PromptTypeGapInterview)
+	gapPrompt := ""
+	if gapPromptObj != nil {
+		gapPrompt = gapPromptObj.Content
+	}
+
+	interviewer := agents.NewGapInterviewerAgent(provider, gapPrompt)
+	questions, err := interviewer.GenerateQuestions(ctx, cvContent, matches)
+	if err != nil {
+		p.auditRepo.Log(ctx, &domain.AuditLog{
+			Action:       domain.ActionGapInterview,
+			Provider:     provider.ProviderName(),
+			ResultStatus: "FAILED",
+			DetailsJSON:  fmt.Sprintf(`{"error": "%s"}`, err.Error()),
+		})
+		return nil, err
+	}
+
+	p.auditRepo.Log(ctx, &domain.AuditLog{
+		Action:       domain.ActionGapInterview,
+		Provider:     provider.ProviderName(),
+		ResultStatus: "SUCCESS",
+		DetailsJSON:  fmt.Sprintf(`{"questions_generated": %d}`, len(questions)),
+	})
+	return questions, nil
+}
+
+// OptimizeAndGenerateCV ejecuta la Fase 4 y 5 usando el bucle agéntico por defecto (sin respuestas adicionales).
 func (p *OptimizationPipelineService) OptimizeAndGenerateCV(ctx context.Context, jobID, versionID string, targetLang domain.Language) (*OptimizationExecutionResult, error) {
+	return p.OptimizeWithContext(ctx, jobID, versionID, targetLang, nil)
+}
+
+// OptimizeWithContext ejecuta la Fase 4 y 5 con ReflectionOptimizerAgent, CriticAgent y respuestas verificadas de gaps.
+func (p *OptimizationPipelineService) OptimizeWithContext(ctx context.Context, jobID, versionID string, targetLang domain.Language, gapAnswers []domain.GapAnswer) (*OptimizationExecutionResult, error) {
 	job, err := p.jobRepo.GetByID(ctx, jobID)
 	if err != nil {
 		return nil, err
@@ -220,6 +272,12 @@ func (p *OptimizationPipelineService) OptimizeAndGenerateCV(ctx context.Context,
 		optPrompt = optPromptObj.Content
 	}
 
+	criticPromptObj, _ := p.promptRepo.GetActive(ctx, domain.PromptTypeCriticAudit)
+	criticPrompt := ""
+	if criticPromptObj != nil {
+		criticPrompt = criticPromptObj.Content
+	}
+
 	if targetLang == "" {
 		targetLang = job.TargetLanguage
 	}
@@ -227,8 +285,11 @@ func (p *OptimizationPipelineService) OptimizeAndGenerateCV(ctx context.Context,
 		targetLang = job.DetectedLanguage
 	}
 
-	// 1. Generación de CV Optimizado (RF-020, RF-021, RF-022)
-	optResult, err := provider.GenerateOptimizedCV(ctx, cvContent, job.JobPostingRaw, matches, targetLang, optPrompt)
+	// 1. Bucle agéntico de Optimización + Validación Anti-Invención + CriticAgent (máx 2 iteraciones)
+	critic := agents.NewCriticAgent(provider, criticPrompt)
+	reflectionAgent := agents.NewReflectionOptimizerAgent(provider, p.validator, critic, 2)
+
+	agentRes, err := reflectionAgent.Optimize(ctx, cvContent, job.JobPostingRaw, matches, targetLang, optPrompt, gapAnswers)
 	if err != nil {
 		p.auditRepo.Log(ctx, &domain.AuditLog{
 			Action:       domain.ActionOptimizeCV,
@@ -236,35 +297,33 @@ func (p *OptimizationPipelineService) OptimizeAndGenerateCV(ctx context.Context,
 			ResultStatus: "FAILED",
 			DetailsJSON:  fmt.Sprintf(`{"error": "%s"}`, err.Error()),
 		})
-		return nil, fmt.Errorf("error generando CV optimizado: %w", err)
+		return nil, fmt.Errorf("error en optimización agéntica: %w", err)
 	}
 
-	// 2. Validación de regla Anti-Invención (RF-019)
-	alerts, err := p.validator.Validate(cvContent, &optResult)
-	if err != nil {
-		p.auditRepo.Log(ctx, &domain.AuditLog{
-			Action:       domain.ActionOptimizeCV,
-			Provider:     provider.ProviderName(),
-			ResultStatus: "FAILED",
-			DetailsJSON:  fmt.Sprintf(`{"anti_invention_error": "%s"}`, err.Error()),
-		})
-		return nil, fmt.Errorf("validación anti-invención no superada: %w", err)
-	}
+	p.auditRepo.Log(ctx, &domain.AuditLog{
+		Action:       domain.ActionAgentAudit,
+		Provider:     provider.ProviderName(),
+		ResultStatus: "SUCCESS",
+		DetailsJSON:  fmt.Sprintf(`{"trace_steps": %d, "critic_approved": %t}`, len(agentRes.Traces), agentRes.CriticVerdict.Approved),
+	})
 
-	// 3. Generación de Diff estilo Git (RF-023)
+	optResult := agentRes.Optimized
+	alerts := agentRes.Alerts
+
+	// 2. Generación de Diff estilo Git (RF-023)
 	diffStr, err := p.diffEngine.GenerateDiff(cvContent, optResult.ContentMarkdown)
 	if err != nil {
 		diffStr = "Diff no disponible"
 	}
 
-	// 4. Guardar nueva versión de CV (RF-003)
+	// 3. Guardar nueva versión de CV (RF-003)
 	reason := fmt.Sprintf("Optimizado para %s (%s)", job.Company, job.Role)
 	newVer, err := p.cvService.AddNewVersion(ctx, sourceVer.CVID, sourceVer.ID, optResult.ContentMarkdown, reason, provider.ProviderName(), "active-model")
 	if err != nil {
 		return nil, fmt.Errorf("error guardando nueva versión: %w", err)
 	}
 
-	// 5. Guardar trazabilidad de cambios (RF-024)
+	// 4. Guardar trazabilidad de cambios (RF-024)
 	for i := range optResult.Changes {
 		optResult.Changes[i].JobApplicationID = jobID
 		optResult.Changes[i].CVVersionGeneratedID = newVer.ID
@@ -288,5 +347,7 @@ func (p *OptimizationPipelineService) OptimizeAndGenerateCV(ctx context.Context,
 		DiffUnified:    diffStr,
 		Changes:        optResult.Changes,
 		ValidationWarn: alerts,
+		AgentTrace:     agentRes.Traces,
+		CriticSummary:  agentRes.CriticVerdict.Summary,
 	}, nil
 }

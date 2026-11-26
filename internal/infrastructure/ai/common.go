@@ -112,6 +112,46 @@ Responde ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 		Content: `Eres un traductor profesional de perfiles técnicos de ingeniería.
 Traduce el siguiente CV al idioma objetivo indicado (Español, Inglés o Portugués), preservando la terminología técnica estándar de la industria, las viñetas y el formato Markdown.`,
 	},
+	{
+		Type:    domain.PromptTypeCriticAudit,
+		Name:    "Auditor Semántico Anti-Invención (Critic Agent)",
+		Version: 1,
+		Content: `Eres un auditor estricto de veracidad curricular (Critic Agent).
+Compara el CV ORIGINAL (y las respuestas verificadas del candidato, si existen) contra el CV OPTIMIZADO y su lista de cambios propuestos.
+Detecta si se ha exagerado el seniority, inventado métricas cuantitativas sin respaldo, añadido tecnologías no presentes en la evidencia o distorsionado cargos/fechas.
+
+Responde ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
+{
+  "approved": true,
+  "issues": [
+    {
+      "severity": "WARNING|BLOCKING",
+      "claim": "Afirmación cuestionada en el CV optimizado",
+      "reason": "Por qué no está suficientemente respaldada por el CV original",
+      "suggestion": "Cómo reformularla o eliminarla"
+    }
+  ],
+  "summary": "Resumen breve del veredicto de auditoría"
+}`,
+	},
+	{
+		Type:    domain.PromptTypeGapInterview,
+		Name:    "Entrevistador de Gaps Curriculares (Gap Interviewer Agent)",
+		Version: 1,
+		Content: `Eres un entrevistador técnico experto que ayuda a candidatos a descubrir experiencia real no documentada en su CV.
+Analiza los requisitos con estado 'No evidenciado' o 'Cumple parcialmente' y genera hasta 5 preguntas concretas y directas para confirmar si el candidato posee esa experiencia en proyectos reales.
+
+Responde ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
+{
+  "questions": [
+    {
+      "requirement_name": "Nombre del requisito",
+      "question": "Pregunta específica para el candidato",
+      "why_asked": "Breve explicación de por qué esta información ayudaría al matching ATS"
+    }
+  ]
+}`,
+	},
 }
 
 // DTOs auxiliares para deserialización de respuestas JSON de LLMs

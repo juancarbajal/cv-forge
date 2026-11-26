@@ -43,6 +43,8 @@ type JobView struct {
 	// Vista Optimización & Diff
 	diffViewer       *widget.Entry
 	changesContainer *fyne.Container
+	agentTraceLabel  *widget.Label
+	gapAnswers       []domain.GapAnswer
 }
 
 func NewJobView(jobService *app.JobService, cvService *app.CVService, pipeline *app.OptimizationPipelineService, win fyne.Window) fyne.CanvasObject {
@@ -221,18 +223,71 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 	)
 
 	// --- Tab 3: Optimización & Diff ---
-	btnOptimize := widget.NewButton("3. Generar CV Optimizado con IA (Anti-Invención)", func() {
+	v.agentTraceLabel = widget.NewLabel("Estado Agentes: Sin ejecutar")
+	v.agentTraceLabel.Wrapping = fyne.TextWrapWord
+
+	btnGapInterview := widget.NewButton("2b. Responder Preguntas de Gaps (Opcional)", func() {
 		if v.selectedJob == nil {
 			return
 		}
-		RunAsync(v.win, "Optimizando CV...", "Reescribiendo CV con trazabilidad y validación anti-invención...", 55*time.Second, func(ctx context.Context) error {
-			res, err := v.pipeline.OptimizeAndGenerateCV(ctx, v.selectedJob.ID, v.selectedJob.CVVersionID, v.selectedJob.TargetLanguage)
+		var questions []domain.GapQuestion
+		RunAsync(v.win, "Analizando Gaps...", "El Agente Entrevistador está preparando preguntas sobre requisitos faltantes...", 55*time.Second, func(ctx context.Context) error {
+			qs, err := v.pipeline.GenerateGapQuestions(ctx, v.selectedJob.ID, v.selectedJob.CVVersionID)
+			if err != nil {
+				return err
+			}
+			questions = qs
+			return nil
+		}, func(err error) {
+			if err != nil {
+				dialog.ShowError(err, v.win)
+				return
+			}
+			if len(questions) == 0 {
+				dialog.ShowInformation("Sin Gaps", "No se detectaron requisitos faltantes o parciales para entrevistar.", v.win)
+				return
+			}
+			entries := make([]*widget.Entry, len(questions))
+			formItems := make([]*widget.FormItem, len(questions))
+			for i, q := range questions {
+				e := widget.NewMultiLineEntry()
+				e.SetPlaceHolder(q.Question)
+				entries[i] = e
+				formItems[i] = widget.NewFormItem(fmt.Sprintf("%s:\n%s", q.RequirementName, q.Question), e)
+			}
+			dialog.ShowForm("Entrevista de Gaps (Agente Entrevistador)", "Guardar Respuestas", "Cancelar", formItems, func(ok bool) {
+				if !ok {
+					return
+				}
+				var answers []domain.GapAnswer
+				for i, q := range questions {
+					if entries[i].Text != "" {
+						answers = append(answers, domain.GapAnswer{
+							RequirementName: q.RequirementName,
+							Question:        q.Question,
+							Answer:          entries[i].Text,
+						})
+					}
+				}
+				v.gapAnswers = answers
+				v.agentTraceLabel.SetText(fmt.Sprintf("Estado Agentes: %d respuestas de gaps listas para la optimización.", len(answers)))
+			}, v.win)
+		})
+	})
+
+	btnOptimize := widget.NewButton("3. Generar CV Optimizado con IA (Agentes + Anti-Invención)", func() {
+		if v.selectedJob == nil {
+			return
+		}
+		RunAsync(v.win, "Optimizando CV...", "Ejecutando ReflectionOptimizer + CriticAgent (máx. 2 iteraciones)...", 150*time.Second, func(ctx context.Context) error {
+			res, err := v.pipeline.OptimizeWithContext(ctx, v.selectedJob.ID, v.selectedJob.CVVersionID, v.selectedJob.TargetLanguage, v.gapAnswers)
 			if err != nil {
 				return err
 			}
 			fyne.Do(func() {
 				v.diffViewer.SetText(res.DiffUnified)
 				v.renderChanges(res.Changes)
+				v.agentTraceLabel.SetText(fmt.Sprintf("Auditoría Agéntica (%d pasos): %s", len(res.AgentTrace), res.CriticSummary))
 			})
 			return nil
 		}, func(err error) {
@@ -241,7 +296,7 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 				return
 			}
 			v.selectJob(v.selectedJob.ID)
-			dialog.ShowInformation("Éxito", "Nueva versión del CV generada y guardada en el historial", v.win)
+			dialog.ShowInformation("Éxito", "Nueva versión del CV generada, auditada y guardada en el historial", v.win)
 		})
 	})
 
@@ -266,7 +321,8 @@ func (v *JobView) buildUI() fyne.CanvasObject {
 	tabOptimizacion := container.NewBorder(
 		container.NewVBox(
 			widget.NewLabel("Genera un CV optimizado adaptado específicamente a los requisitos de la vacante sin inventar información."),
-			btnOptimize,
+			container.NewHBox(btnGapInterview, btnOptimize),
+			v.agentTraceLabel,
 		),
 		nil, nil, nil,
 		tabOptSplit,

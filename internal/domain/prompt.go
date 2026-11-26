@@ -13,6 +13,8 @@ const (
 	PromptTypeATSScoring     PromptType = "ATS_SCORING"
 	PromptTypeTranslation    PromptType = "TRANSLATION"
 	PromptTypeCVOptimization PromptType = "CV_OPTIMIZATION"
+	PromptTypeCriticAudit    PromptType = "CRITIC_AUDIT"
+	PromptTypeGapInterview   PromptType = "GAP_INTERVIEW"
 )
 
 type Prompt struct {

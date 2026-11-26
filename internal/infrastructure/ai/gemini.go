@@ -194,3 +194,7 @@ func (g *GeminiProvider) GenerateOptimizedCV(ctx context.Context, cvContent stri
 	}
 	return parseOptimization(raw, targetLang)
 }
+
+func (g *GeminiProvider) CompleteJSON(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+	return g.callGemini(ctx, systemPrompt, userMessage, true)
+}

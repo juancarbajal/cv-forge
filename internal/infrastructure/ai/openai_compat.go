@@ -180,3 +180,7 @@ func (p *OpenAICompatibleProvider) GenerateOptimizedCV(ctx context.Context, cvCo
 	}
 	return parseOptimization(raw, targetLang)
 }
+
+func (p *OpenAICompatibleProvider) CompleteJSON(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+	return p.call(ctx, systemPrompt, userMessage, true)
+}

@@ -167,3 +167,14 @@ func (m *MockAIProvider) GenerateOptimizedCV(ctx context.Context, cvContent stri
 		TargetLanguage:  targetLang,
 	}, nil
 }
+
+func (m *MockAIProvider) CompleteJSON(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+	lowerSys := strings.ToLower(systemPrompt)
+	if strings.Contains(lowerSys, "auditor") || strings.Contains(lowerSys, "approved") {
+		return `{"approved": true, "issues": [], "summary": "Todos los cambios están respaldados por evidencia del CV original."}`, nil
+	}
+	if strings.Contains(lowerSys, "entrevistador") || strings.Contains(lowerSys, "questions") {
+		return `{"questions": [{"requirement_name": "PostgreSQL", "question": "¿Has administrado o diseñado esquemas en PostgreSQL en tus proyectos backend?", "why_asked": "El CV menciona bases de datos relacionales sin detallar PostgreSQL."}]}`, nil
+	}
+	return `{}`, nil
+}

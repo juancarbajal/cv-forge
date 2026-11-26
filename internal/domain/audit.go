@@ -15,6 +15,8 @@ const (
 	ActionUpdateCV     AuditAction = "UPDATE_CV"
 	ActionUpdatePrompt AuditAction = "UPDATE_PROMPT"
 	ActionUpdateConfig AuditAction = "UPDATE_CONFIG"
+	ActionAgentAudit   AuditAction = "AGENT_AUDIT"
+	ActionGapInterview AuditAction = "GAP_INTERVIEW"
 )
 
 type AuditLog struct {

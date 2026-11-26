@@ -168,3 +168,7 @@ func (o *OllamaProvider) GenerateOptimizedCV(ctx context.Context, cvContent stri
 	}
 	return parseOptimization(raw, targetLang)
 }
+
+func (o *OllamaProvider) CompleteJSON(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+	return o.call(ctx, systemPrompt, userMessage, true)
+}
